@@ -3,6 +3,12 @@ const nodeExternals = require('webpack-node-externals');
 const webpack = require('webpack');
 
 module.exports = {
+  devServer: {
+    overlay: {
+      warnings: false,
+      errors: false,
+    },
+  },
   chainWebpack: (webpackConfig) => {
     // We need to disable cache loader, otherwise the client build
     // will used cached components from the server build
