@@ -9,7 +9,9 @@
     "build": "npm run build:client && npm run build:server && npm run start",
     "start": "node server.js",
     "prod": "vue-cli-service build --dest dist/client && cross-env SSR=1 vue-cli-service build --dest dist/server && npm run start",
-    "lint": "cross-env ./node_modules/.bin/eslint --color --fix ./ && vue-cli-service lint --fix"
+    "lint": "cross-env ./node_modules/.bin/eslint --color --fix ./ && vue-cli-service lint --fix",
+    "clear_uni:dist": "rm -rf ./dist",
+    "clear_win:dist": "rmdir /s /q dist"
   },
   "dependencies": {
     "@vue/server-renderer": "^3.1.4",
