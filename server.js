@@ -19,16 +19,16 @@ server.use(
 );
 
 server.get('*', async (req, res) => {
-  const { app, router, store } = await createApp(req);
+  const { app, router, store } = await createApp({ context: req });
 
-  await router.push(req.url);
-  await router.isReady();
+  //await router.push(req.url);
+  //await router.isReady();
 
-  let appContent = await renderToString(app);
+  const appContent = await renderToString(app);
 
   const renderState = `
     <script>
-      window.INITIAL_DATA = ${JSON.stringify(store.state)}
+      window.__INITIAL_STATE__ = ${JSON.stringify(store.state)}
     </script>`;
 
   fs.readFile(path.join(__dirname, '/dist/client/index.html'), (err, template) => {
@@ -36,11 +36,11 @@ server.get('*', async (req, res) => {
       throw err;
     }
 
-    appContent = `<div id="app">${appContent}</div>`;
 
     const html = template
       .toString()
-      .replace('<div id="app">', `<div id="app">${renderState}${appContent}`);
+      .replace('<div id="app">', `${renderState}<div id="app">${appContent}`);
+    console.log(html);
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   });
