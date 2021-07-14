@@ -1,8 +1,12 @@
 import createApp from './app';
 
-// client-specific bootstrapping logic...
+const { app, router, store } = createApp();
 
-const { app } = createApp();
+if (window.__INITIAL_STATE__) {
+  store.replaceState(window.__INITIAL_STATE__);
+}
 
 // this assumes App.vue template root element has `id="app"`
-app.mount('#app');
+router.isReady().then(() => {
+  app.mount('#app');
+});

@@ -7,7 +7,7 @@ const manifest = require('./dist/server/ssr-manifest.json');
 const server = express();
 
 const appPath = path.join(__dirname, './dist', 'server', manifest['app.js']);
-// eslint-disable-next-line import/no-dynamic-require
+
 const createApp = require(appPath).default;
 
 server.use('/img', express.static(path.join(__dirname, './dist/client', 'img')));
@@ -19,18 +19,28 @@ server.use(
 );
 
 server.get('*', async (req, res) => {
-  const { app } = await createApp();
+  const { app, router, store } = await createApp(req);
 
-  const appContent = await renderToString(app);
+  await router.push(req.url);
+  await router.isReady();
+
+  let appContent = await renderToString(app);
+
+  const renderState = `
+    <script>
+      window.INITIAL_DATA = ${JSON.stringify(store.state)}
+    </script>`;
 
   fs.readFile(path.join(__dirname, '/dist/client/index.html'), (err, template) => {
     if (err) {
       throw err;
     }
 
+    appContent = `<div id="app">${appContent}</div>`;
+
     const html = template
       .toString()
-      .replace('<div id="app">', `<div id="app">${appContent}`);
+      .replace('<div id="app">', `<div id="app">${renderState}${appContent}`);
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   });
