@@ -37,7 +37,16 @@ server.get('*', async (req, res) => {
       throw err;
     }
 
-    const templateWithState = insertInitialState(store.state, template);
+    let templateWithState;
+    try {
+      templateWithState = insertInitialState(store.state, template);
+    } catch (err) {
+      console.log(err);
+      res.setHeader('Content-Type', 'text/html');
+      res.send('server error 501');
+      return;
+    }
+
     const html = templateWithState
       .toString()
       .replace('<div id="app">', `<div id="app">${appContent}`);
