@@ -1,8 +1,9 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const fs = require('fs');
 const { renderToString } = require('@vue/server-renderer');
 const manifest = require('./dist/server/ssr-manifest.json');
+const insertInitialState = require('./src/utils/insertInitialState.js').insertInitialState;
 
 const server = express();
 
@@ -19,27 +20,27 @@ server.use(
 );
 
 server.get('*', async (req, res) => {
-  const { app, router, store } = await createApp({ context: req });
+  const appParts = Object.create(null); // app parts: { app, router, store }
 
-  //await router.push(req.url);
-  //await router.isReady();
+  try {
+    Object.assign(appParts, await createApp(req));
+  } catch (err) {
+    console.log(err);
+    return;
+  }
 
+  const { app, router, store } = appParts;
   const appContent = await renderToString(app);
-
-  const renderState = `
-    <script>
-      window.__INITIAL_STATE__ = ${JSON.stringify(store.state)}
-    </script>`;
 
   fs.readFile(path.join(__dirname, '/dist/client/index.html'), (err, template) => {
     if (err) {
       throw err;
     }
 
-
-    const html = template
+    const templateWithState = insertInitialState(store.state, template);
+    const html = templateWithState
       .toString()
-      .replace('<div id="app">', `${renderState}<div id="app">${appContent}`);
+      .replace('<div id="app">', `<div id="app">${appContent}`);
     console.log(html);
     res.setHeader('Content-Type', 'text/html');
     res.send(html);

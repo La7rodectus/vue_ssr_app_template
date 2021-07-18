@@ -6,7 +6,7 @@ export default Vuex.createStore({
   },
   mutations: {
     INCREMENT(state) {
-      state.counter += 1;
+      state.counter++;
     },
   },
 });
