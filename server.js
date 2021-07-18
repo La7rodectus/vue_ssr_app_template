@@ -1,13 +1,14 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const fs = require('fs');
 const { renderToString } = require('@vue/server-renderer');
 const manifest = require('./dist/server/ssr-manifest.json');
+const insertInitialState = require('./src/utils/insertInitialState.js').insertInitialState;
 
 const server = express();
 
 const appPath = path.join(__dirname, './dist', 'server', manifest['app.js']);
-// eslint-disable-next-line import/no-dynamic-require
+
 const createApp = require(appPath).default;
 
 server.use('/img', express.static(path.join(__dirname, './dist/client', 'img')));
@@ -19,8 +20,16 @@ server.use(
 );
 
 server.get('*', async (req, res) => {
-  const { app } = await createApp();
+  const appParts = Object.create(null); // app parts: { app, router, store }
 
+  try {
+    Object.assign(appParts, await createApp(req));
+  } catch (err) {
+    console.log(err);
+    return;
+  }
+
+  const { app, router, store } = appParts;
   const appContent = await renderToString(app);
 
   fs.readFile(path.join(__dirname, '/dist/client/index.html'), (err, template) => {
@@ -28,9 +37,20 @@ server.get('*', async (req, res) => {
       throw err;
     }
 
-    const html = template
+    let templateWithState;
+    try {
+      templateWithState = insertInitialState(store.state, template);
+    } catch (err) {
+      console.log(err);
+      res.setHeader('Content-Type', 'text/html');
+      res.send('server error 501');
+      return;
+    }
+
+    const html = templateWithState
       .toString()
       .replace('<div id="app">', `<div id="app">${appContent}`);
+    console.log(html);
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   });
