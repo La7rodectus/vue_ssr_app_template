@@ -7,6 +7,9 @@ const insertInitialState = require('./src/utils/insertInitialState.js').insertIn
 
 const server = express();
 
+const template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html'), 'utf-8')
+  .toString();
+
 const appPath = path.join(__dirname, './dist', 'server', manifest['app.js']);
 
 const createApp = require(appPath).default;
@@ -21,39 +24,34 @@ server.use(
 
 server.get('*', async (req, res) => {
   const appParts = Object.create(null); // app parts: { app, router, store }
+  let appContent = new String();
 
   try {
     Object.assign(appParts, await createApp(req));
   } catch (err) {
     console.log(err);
+    res.setHeader('Content-Type', 'text/html');
+    res.send('server error 500');
     return;
   }
 
   const { app, router, store } = appParts;
-  const appContent = await renderToString(app);
 
-  fs.readFile(path.join(__dirname, '/dist/client/index.html'), (err, template) => {
-    if (err) {
-      throw err;
-    }
+  let templateWithState;
+  try {
+    appContent = await renderToString(app);
+    templateWithState = insertInitialState(store.state, template);
+  } catch (err) {
+    console.log(err);
+    return;
+  }
 
-    let templateWithState;
-    try {
-      templateWithState = insertInitialState(store.state, template);
-    } catch (err) {
-      console.log(err);
-      res.setHeader('Content-Type', 'text/html');
-      res.send('server error 501');
-      return;
-    }
+  const html = templateWithState.replace('<div id="app">', `<div id="app">${appContent}`);
+  console.log(html);
 
-    const html = templateWithState
-      .toString()
-      .replace('<div id="app">', `<div id="app">${appContent}`);
-    console.log(html);
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
-  });
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+
 });
 
 console.log('You can navigate to http://localhost:8080');
