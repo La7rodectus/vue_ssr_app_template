@@ -41,6 +41,9 @@ export default {
     test(evt) {
       console.log(evt.target);
     },
+    asyncData({ store }) {
+      store.commit('INCREMENT');
+    },
   },
 };
 </script>
