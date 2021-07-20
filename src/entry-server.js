@@ -31,7 +31,7 @@ export default (context) => new Promise((resolve, reject) => {
         }
       }
     })).then(() => {
-      console.log(store.state);
+      console.log('initial global app state:', store.state);
 
       resolve({ app, router, store });
     }).catch((err) => reject(`failed to prefetch data: ${err}`));
