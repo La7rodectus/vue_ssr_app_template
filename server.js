@@ -1,28 +1,31 @@
-const fs = require('fs');
+const https = require('https');
 const path = require('path');
-const express = require('express');
+const fs = require('fs');
 const { renderToString } = require('@vue/server-renderer');
-const manifest = require('./dist/server/ssr-manifest.json');
+const ServeStatic = require('./src/utils/serveStatic.js');
 const insertInitialState = require('./src/utils/insertInitialState.js').insertInitialState;
 
-const server = express();
-
+const webpackManifest = require('./dist/server/ssr-manifest.json');
+const appPath = path.join(__dirname, './dist', 'server', webpackManifest['app.js']);
 const template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html'), 'utf-8')
   .toString();
 
-const appPath = path.join(__dirname, './dist', 'server', manifest['app.js']);
-
 const createApp = require(appPath).default;
 
-server.use('/img', express.static(path.join(__dirname, './dist/client', 'img')));
-server.use('/js', express.static(path.join(__dirname, './dist/client', 'js')));
-server.use('/css', express.static(path.join(__dirname, './dist/client', 'css')));
-server.use(
-  '/favicon.ico',
-  express.static(path.join(__dirname, './dist/client', 'favicon.ico')),
-);
+const options = {
+  key: fs.readFileSync(path.join(__dirname, 'key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'cert.pem')),
+};
 
-server.get('*', async (req, res) => {
+
+const STATIC = ['/img', '/js', '/css', '/favicon.ico'];
+const staticConfig = ServeStatic.genConfigForAll(STATIC, './dist/client', __dirname);
+const handleStatic = ServeStatic.create(staticConfig, __dirname);
+
+const serve = async (req, res) => {
+  console.log('req.url:', req.url);
+
+  if (handleStatic(req, res)) return;
   const appParts = Object.create(null); // app parts: { app, router, store }
   let appContent = new String();
 
@@ -31,11 +34,11 @@ server.get('*', async (req, res) => {
   } catch (err) {
     console.log(err);
     res.setHeader('Content-Type', 'text/html');
-    res.send('server error 500');
+    res.end('server error 500');
     return;
   }
 
-  const { app, router, store } = appParts;
+  const { app, store } = appParts;
 
   let templateWithState;
   try {
@@ -47,13 +50,13 @@ server.get('*', async (req, res) => {
   }
 
   const html = templateWithState.replace('<div id="app">', `<div id="app">${appContent}`);
-  console.log(html);
 
   res.setHeader('Content-Type', 'text/html');
-  res.send(html);
+  res.end(html);
+};
 
-});
+https.createServer(options, async (req, res) => {
+  serve(req, res);
+}).listen(8080);
 
-console.log('You can navigate to http://localhost:8080');
-
-server.listen(8080);
+console.log('You can navigate to https://localhost:8080');

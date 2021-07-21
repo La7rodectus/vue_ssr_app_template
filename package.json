@@ -6,7 +6,7 @@
     "serve": "vue-cli-service serve",
     "build:client": "vue-cli-service build --dest dist/client --mode=development",
     "build:server": "cross-env SSR=1 vue-cli-service build --dest dist/server --mode=development",
-    "build": "npm run build:client && npm run build:server && npm run start",
+    "build": "npm run build:client && npm run build:server",
     "start": "node server.js",
     "prod": "vue-cli-service build --dest dist/client && cross-env SSR=1 vue-cli-service build --dest dist/server && npm run start",
     "lint": "cross-env ./node_modules/.bin/eslint --color --fix ./ && vue-cli-service lint --fix",
