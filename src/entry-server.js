@@ -5,10 +5,7 @@ export default (context) => new Promise((resolve, reject) => {
   const { router, app, store } = createApp();
 
   // set server-side router's location
-  router.push(context.url);
-
-  router.isReady().then(() => {
-
+  router.replace(context.url).then(() => {
     const routerMatched = router.currentRoute.value.matched;
 
     // no matched routes, reject with 404
@@ -31,10 +28,11 @@ export default (context) => new Promise((resolve, reject) => {
         }
       }
     })).then(() => {
-      console.log(store.state);
+      console.log('initial global app state:', store.state);
 
       resolve({ app, router, store });
     }).catch((err) => reject(`failed to prefetch data: ${err}`));
 
   }).catch((err) => reject(err));
 });
+
