@@ -5,10 +5,7 @@ export default (context) => new Promise((resolve, reject) => {
   const { router, app, store } = createApp();
 
   // set server-side router's location
-  router.push(context.url);
-
-  router.isReady().then(() => {
-
+  router.replace(context.url).then(() => {
     const routerMatched = router.currentRoute.value.matched;
 
     // no matched routes, reject with 404
@@ -38,3 +35,4 @@ export default (context) => new Promise((resolve, reject) => {
 
   }).catch((err) => reject(err));
 });
+
