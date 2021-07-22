@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 
 /**
@@ -36,7 +35,7 @@ const genConfigForAll = (routes, to, _dir) => {
  */
 const create = (staticConfig) => {
   const config = staticConfig;
-  return (req, res) => {
+  return (req, res, fs) => {
     const pathArr = req.url.split('/').slice(1);
     console.log(pathArr);
     const configPathPart = '/' + pathArr[0];
@@ -45,6 +44,7 @@ const create = (staticConfig) => {
       fs.stat(fullPath, (err, stats) => {
         if (!err && stats.isFile()) fs.readFile(fullPath, (err, data) => {
           if (!err) {
+            res.setHeader('Content-Type', 'text/event-stream');
             res.writeHead(200);
             res.end(data);
           }

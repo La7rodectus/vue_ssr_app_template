@@ -1,8 +1,9 @@
 const https = require('https');
 const path = require('path');
-const fs = require('fs');
+let fs = require('fs');
 const { renderToString } = require('@vue/server-renderer');
 const ServeStatic = require('./src/utils/serveStatic.js');
+const DevServer = require('./dev-server.js');
 const insertInitialState = require('./src/utils/insertInitialState.js').insertInitialState;
 
 const webpackManifest = require('./dist/server/ssr-manifest.json');
@@ -12,7 +13,7 @@ const template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html')
 
 const createApp = require(appPath).default;
 
-const options = {
+const serverOptions = {
   key: fs.readFileSync(path.join(__dirname, 'key.pem')),
   cert: fs.readFileSync(path.join(__dirname, 'cert.pem')),
 };
@@ -22,10 +23,21 @@ const STATIC = ['/img', '/js', '/css', '/favicon.ico'];
 const staticConfig = ServeStatic.genConfigForAll(STATIC, './dist/client', __dirname);
 const handleStatic = ServeStatic.create(staticConfig, __dirname);
 
-const serve = async (req, res) => {
-  console.log('req.url:', req.url);
+const devServerOptions = {
+  templatePath: path.join(__dirname, '/dist/client/index.html').toString(),
+};
 
-  if (handleStatic(req, res)) return;
+let devServerMiddleware = null;
+if (process.env.HMR) {
+  fs = DevServer.setHooks(devServerOptions);
+  devServerMiddleware = DevServer.getMiddleware();
+}
+
+const serve = async (req, res) => {
+  console.log('SSR req.url:', req.url);
+
+  if (handleStatic(req, res, fs)) return;
+
   const appParts = Object.create(null); // app parts: { app, router, store }
   let appContent = new String();
 
@@ -33,7 +45,7 @@ const serve = async (req, res) => {
     Object.assign(appParts, await createApp(req));
   } catch (err) {
     console.log(err);
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Type', 'text/event-stream');
     res.end('server error 500');
     return;
   }
@@ -55,8 +67,13 @@ const serve = async (req, res) => {
   res.end(html);
 };
 
-https.createServer(options, async (req, res) => {
-  serve(req, res);
+https.createServer(serverOptions, async (req, res) => {
+  console.log('req.url:', req.url);
+  if (process.env.HMR) {
+    devServerMiddleware(req, res, serve);
+  } else {
+    serve(req, res);
+  }
 }).listen(8080);
 
 console.log('You can navigate to https://localhost:8080');
