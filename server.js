@@ -1,13 +1,14 @@
 const https = require('https');
 const path = require('path');
-const fs = require('fs');
+let fs = require('fs');
 const { renderToString } = require('@vue/server-renderer');
 const ServeStatic = require('./src/utils/serveStatic.js');
+const setupDevServer = require('./dev-server.js');
 const insertInitialState = require('./src/utils/insertInitialState.js').insertInitialState;
 
-const webpackManifest = require('./dist/server/ssr-manifest.json');
+let webpackManifest = require('./dist/server/ssr-manifest.json');
 const appPath = path.join(__dirname, './dist', 'server', webpackManifest['app.js']);
-const template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html'), 'utf-8')
+let template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html'), 'utf-8')
   .toString();
 
 const createApp = require(appPath).default;
@@ -22,10 +23,24 @@ const STATIC = ['/img', '/js', '/css', '/favicon.ico'];
 const staticConfig = ServeStatic.genConfigForAll(STATIC, './dist/client', __dirname);
 const handleStatic = ServeStatic.create(staticConfig, __dirname);
 
+const devServerOptions = {
+  templatePath: path.join(__dirname, '/dist/client/index.html').toString(),
+};
+
 const serve = async (req, res) => {
   console.log('req.url:', req.url);
 
-  if (handleStatic(req, res)) return;
+  if (process.env.HMR) {
+    await setupDevServer(devServerOptions).then((mfs, tmplt, manifest) => {
+      fs = mfs;
+      if (tmplt) template = tmplt;
+      if (manifest) webpackManifest = manifest;
+    });
+    console.log('sent');
+  }
+
+  if (handleStatic(req, res, fs)) return;
+
   const appParts = Object.create(null); // app parts: { app, router, store }
   let appContent = new String();
 
@@ -33,7 +48,7 @@ const serve = async (req, res) => {
     Object.assign(appParts, await createApp(req));
   } catch (err) {
     console.log(err);
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Type', 'text/event-stream');
     res.end('server error 500');
     return;
   }
