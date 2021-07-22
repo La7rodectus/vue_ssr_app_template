@@ -21,16 +21,6 @@ const clientConfig = getWebpackConfig();
 serverConfig.output.path = path.join(serverConfig.output.path, 'server');
 clientConfig.output.path = path.join(clientConfig.output.path, 'client');
 
-
-const readFile = (fs, file, config) => {
-  console.log(fs);
-  try {
-    return fs.readFileSync(path.join(config.output.path, file), 'utf-8');
-  } catch (err) {
-    console.log(err);
-  }
-};
-
 const mfs = new MFS();
 
 const clientCompiler = webpack(clientConfig);
@@ -72,7 +62,9 @@ const getMiddleware = () => {
   // dev middleware
   const devMiddleware = require('webpack-dev-middleware')(clientCompiler, {
     publicPath: clientConfig.output.publicPath,
-    noInfo: true
+    noInfo: true,
+    index: false,
+    serverSideRender: true,
   });
   // hot middleware
   const hotMiddleware = require('webpack-hot-middleware')(clientCompiler, { heartbeat: 5000 });
