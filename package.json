@@ -1,6 +1,6 @@
 {
   "name": "vue_ssr_app_template",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Template for creating SSR apps using Vue.js.v3",
   "scripts": {
     "serve": "vue-cli-service serve --open",
