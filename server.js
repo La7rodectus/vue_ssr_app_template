@@ -3,17 +3,17 @@ const path = require('path');
 let fs = require('fs');
 const { renderToString } = require('@vue/server-renderer');
 const ServeStatic = require('./src/utils/serveStatic.js');
-const setupDevServer = require('./dev-server.js');
+const DevServer = require('./dev-server.js');
 const insertInitialState = require('./src/utils/insertInitialState.js').insertInitialState;
 
-let webpackManifest = require('./dist/server/ssr-manifest.json');
+const webpackManifest = require('./dist/server/ssr-manifest.json');
 const appPath = path.join(__dirname, './dist', 'server', webpackManifest['app.js']);
-let template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html'), 'utf-8')
+const template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html'), 'utf-8')
   .toString();
 
 const createApp = require(appPath).default;
 
-const options = {
+const serverOptions = {
   key: fs.readFileSync(path.join(__dirname, 'key.pem')),
   cert: fs.readFileSync(path.join(__dirname, 'cert.pem')),
 };
@@ -27,17 +27,14 @@ const devServerOptions = {
   templatePath: path.join(__dirname, '/dist/client/index.html').toString(),
 };
 
-const serve = async (req, res) => {
-  console.log('req.url:', req.url);
+let devServerMiddleware = null;
+if (process.env.HMR) {
+  fs = DevServer.setHooks(devServerOptions);
+  devServerMiddleware = DevServer.getMiddleware();
+}
 
-  if (process.env.HMR) {
-    await setupDevServer(devServerOptions).then((mfs, tmplt, manifest) => {
-      fs = mfs;
-      if (tmplt) template = tmplt;
-      if (manifest) webpackManifest = manifest;
-    });
-    console.log('sent');
-  }
+const serve = async (req, res) => {
+  console.log('SSR req.url:', req.url);
 
   if (handleStatic(req, res, fs)) return;
 
@@ -70,8 +67,13 @@ const serve = async (req, res) => {
   res.end(html);
 };
 
-https.createServer(options, async (req, res) => {
-  serve(req, res);
+https.createServer(serverOptions, async (req, res) => {
+  console.log('req.url:', req.url);
+  if (process.env.HMR) {
+    devServerMiddleware(req, res, serve);
+  } else {
+    serve(req, res);
+  }
 }).listen(8080);
 
 console.log('You can navigate to https://localhost:8080');
