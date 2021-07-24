@@ -36,6 +36,8 @@ if (process.env.HMR) {
 const serve = async (req, res) => {
   console.log('SSR req.url:', req.url);
 
+  if (process.env.HMR) fs = res.locals.fs;
+
   if (handleStatic(req, res, fs)) return;
 
   const appParts = Object.create(null); // app parts: { app, router, store }

@@ -68,10 +68,10 @@ const getMiddleware = () => {
   });
   // hot middleware
   const hotMiddleware = require('webpack-hot-middleware')(clientCompiler, { heartbeat: 5000 });
-  return async (req, res, cb) => {
+  return async (req, res, next) => {
     await devMiddleware(req, res, async () => {
       await hotMiddleware(req, res, async () => {
-        await cb(req, res);
+        await next(req, res);
       });
     });
   };
