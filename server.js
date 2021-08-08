@@ -3,11 +3,11 @@ const path = require('path');
 let fs = require('fs');
 const { renderToString } = require('@vue/server-renderer');
 const ServeStatic = require('./src/utils/serveStatic.js');
-const DevServer = require('./dev-server.js');
+const DevServer = require('./setup-dev-server.js');
 const insertInitialState = require('./src/utils/insertInitialState.js').insertInitialState;
 
 const webpackManifest = require('./dist/server/ssr-manifest.json');
-const appPath = path.join(__dirname, './dist', 'server', webpackManifest['app.js']);
+const appPath = path.join(__dirname, 'dist', 'server', webpackManifest['app.js']);
 const template = fs.readFileSync(path.join(__dirname, '/dist/client/index.html'), 'utf-8')
   .toString();
 
@@ -24,13 +24,21 @@ const staticConfig = ServeStatic.genConfigForAll(STATIC, './dist/client', __dirn
 const handleStatic = ServeStatic.create(staticConfig, __dirname);
 
 const devServerOptions = {
-  templatePath: path.join(__dirname, '/dist/client/index.html').toString(),
+  templatePath: path.join(__dirname, '/dist/client/index.html'),
+  pathToClientBundle: path.join(__dirname, '/dist/client'),
+  compileToFs: !!process.env.FS,
+  ignore: /\.hot-update\.js$/,
 };
 
 let devServerMiddleware = null;
 if (process.env.HMR) {
-  fs = DevServer.setHooks(devServerOptions);
-  devServerMiddleware = DevServer.getMiddleware();
+  try {
+    DevServer.setHooks(devServerOptions);
+    devServerMiddleware = DevServer.getMiddleware();
+  } catch (err) {
+    console.log(err);
+    process.exit(1);
+  }
 }
 
 const serve = async (req, res) => {
@@ -47,7 +55,7 @@ const serve = async (req, res) => {
     Object.assign(appParts, await createApp(req));
   } catch (err) {
     console.log(err);
-    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Content-Type', 'text/html');
     res.end('server error 500');
     return;
   }
@@ -70,7 +78,7 @@ const serve = async (req, res) => {
 };
 
 https.createServer(serverOptions, async (req, res) => {
-  console.log('req.url:', req.url);
+  console.log('New REQ:', req.url);
   if (process.env.HMR) {
     devServerMiddleware(req, res, serve);
   } else {

@@ -8,7 +8,8 @@
     "build": "npm run build:client && npm run build:server",
     "start": "node server.js",
     "dev": "cross-env HMR=1 node server.js",
-    "prod": "vue-cli-service build --dest dist/client && cross-env SSR=1 vue-cli-service build --dest dist/server && npm run start",
+    "dev:fs": "cross-env FS=1 npm run dev",
+    "prod": "vue-cli-service build --dest dist/server && cross-env SSR=1 vue-cli-service build --dest dist/client && npm run start",
     "lint": "cross-env ./node_modules/.bin/eslint --color --fix ./ && vue-cli-service lint --fix",
     "clear_uni:dist": "rm -rf ./dist",
     "clear_win:dist": "rmdir /s /q dist"

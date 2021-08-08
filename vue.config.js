@@ -29,7 +29,7 @@ module.exports = {
           .clear()
           .add('webpack-hot-middleware/client')
           .add('./src/entry-client.js');
-        webpackConfig.plugin('manifest')
+        webpackConfig.plugin('hotModuleReplacement')
           .use(new webpack.HotModuleReplacementPlugin());
       }
       return;
