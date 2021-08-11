@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const MFS = require('memory-fs');
 const webpack = require('webpack');
+const CCJS = require('./src/utils/CC.js');
 const { pipeline } = require('stream');
-const VUE_CLI_WEBPACK_CONFIG_PATH = '.\\node_modules\\@vue\\cli-service\\webpack.config.js';
+
+//const
+const VUE_CLI_WEBPACK_CONFIG_PATH = path.resolve(path.join('node_modules', '@vue', 'cli-service', 'webpack.config.js'));
 
 /**
  * returns vue-cli-service generated ssr or client webpack config
@@ -19,11 +22,11 @@ const getWebpackConfig = (SSR = false) => {
 
 
 /**
- *
+ * copy file
  * @param { string } file - absolute path to source file
  * @param { string } target - absolute path to target file ot dir
- * @param { fs } mfs - file system
- * @returns { Promise.<null | Error> }
+ * @param { fs } _fs - file system
+ * @returns { Promise.<null|Error> }
  */
 const copyFile = (file, target, _fs = fs) => new Promise((resolve, reject) => {
   if (!path.isAbsolute(file) || !path.isAbsolute(target)) {
@@ -39,8 +42,11 @@ const copyFile = (file, target, _fs = fs) => new Promise((resolve, reject) => {
     _fs.createReadStream(file),
     fs.createWriteStream(targetFile),
     (err) => {
-      if (err) reject(err);
-      console.log(`write from: ${file} to  ${targetFile}`);
+      if (err) {
+        console.log(`${CCJS.redF('Error on file')}: ${file + CCJS.redF(' >>> ') + targetFile}`);
+        reject(err);
+      }
+      console.log(`${CCJS.greenF('Coped file')}: ${file + CCJS.greenF(' >>> ') + targetFile}`);
       resolve();
     }
   );
@@ -48,13 +54,23 @@ const copyFile = (file, target, _fs = fs) => new Promise((resolve, reject) => {
 
 
 /**
- *
- * @param { string } source
- * @param { string } target
- * @param { fs } mfs
- * @returns
+ * parallel directory copy to some fs
+ * @param { string } source - path to source
+ * @param { string } target - path to target
+ * @param { object } [options] - copy options
+ * @param { fs } [options.fs=fs] - file system to work with
+ * @param { (RegExp|false) } [options.ignore=false] - regExp to filter coped files
+ * @returns { Promise.<null|Error> } resolves when file transfer is ready
  */
-const copyMfsDir = async (options, source, target, _fs = fs) => new Promise((resolve, reject) => {
+const copyDir = async (source, target, options) => new Promise((resolve, reject) => {
+  const defaultOptions = {
+    fs: require('fs'),
+    ignore: false,
+  };
+
+  const _options = { ...defaultOptions, ...options };
+  const { fs: _fs, ignore } = _options;
+
   let files = _fs.readdirSync(source, 'utf-8');
   for (const _relativePath of files) {
     const fullPath = path.resolve(path.join(source, _relativePath));
@@ -66,11 +82,10 @@ const copyMfsDir = async (options, source, target, _fs = fs) => new Promise((res
     }
   }
   files = files.map((fileName) => path.join(source, fileName));
-  console.log(files);
 
-  const ignoreFile = options.ignore;
-  files = files.filter((fileName) => !ignoreFile.test(fileName));
-  console.log(files);
+  if (ignore) {
+    files = files.filter((fileName) => !ignore.test(fileName));
+  }
 
   const _copyFile = ((arg) => (file, target) => copyFile(file, target, arg))(_fs);
   Promise.all(files.map((file) => _copyFile(file, target)))
@@ -85,8 +100,11 @@ const copyMfsDir = async (options, source, target, _fs = fs) => new Promise((res
 
 const clientConfig = getWebpackConfig();
 const serverConfig = getWebpackConfig(true);
+
+//fix import cache clearing problem with vue js config | see more: https://github.com/nodejs/modules/issues/307
 serverConfig.output.path = path.join(serverConfig.output.path, 'server');
 clientConfig.output.path = path.join(clientConfig.output.path, 'client');
+
 //ram fs
 const mfs = new MFS();
 
@@ -100,13 +118,18 @@ serverCompiler.outputFileSystem = mfs;
 
 /**
  * setup compilers hooks and file watchers
- * @param {object} options - func options
- * @param {string} options.templatePath - path to html template
- * @param {string} options.pathToClientBundle - path to webpack generated client dir
+ * @param { object } options - func options
+ * @param { string } options.templatePath - path to html template
+ * @param { string } options.pathToClientBundle - path to webpack generated client dir
+ * @param { boolean } options.compileToFs - save compiled files to real fs if true
+ * @param { (RegExp|false) } options.ignore - regExp to filter saved files (compileToFs option)
  */
 const setHooks = (options) => {
   const { templatePath, compileToFs } = options;
-
+  const copyOptions = {
+    'fs': mfs,
+    ignore: options.ignore,
+  };
 
   // read template from disk and watch
   let template = fs.readFileSync(templatePath, 'utf-8');
@@ -122,7 +145,7 @@ const setHooks = (options) => {
     stats.warnings.forEach((err) => console.warn(err));
     if (stats.errors.length) return;
     const ccop = clientConfig.output.path;
-    if (compileToFs) await copyMfsDir(options, ccop, ccop, mfs);
+    if (compileToFs) await copyDir(ccop, ccop, copyOptions);
   });
 
   // watch and update server renderer
@@ -131,7 +154,7 @@ const setHooks = (options) => {
     stats = stats.toJson();
     if (stats.errors.length) return;
     const scop = serverConfig.output.path;
-    if (compileToFs) await copyMfsDir(options, scop, scop, mfs);
+    if (compileToFs) await copyDir(scop, scop, copyOptions);
   });
 
 };
