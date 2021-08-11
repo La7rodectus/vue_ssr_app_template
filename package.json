@@ -1,15 +1,15 @@
 {
   "name": "vue_ssr_app_template",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Template for creating SSR apps using Vue.js.v3",
   "scripts": {
-    "serve": "vue-cli-service serve --open",
     "build:client": "vue-cli-service build --dest dist/client --mode=development",
     "build:server": "cross-env SSR=1 vue-cli-service build --dest dist/server --mode=development",
     "build": "npm run build:client && npm run build:server",
     "start": "node server.js",
     "dev": "cross-env HMR=1 node server.js",
-    "prod": "vue-cli-service build --dest dist/client && cross-env SSR=1 vue-cli-service build --dest dist/server && npm run start",
+    "dev:fs": "cross-env FS=1 npm run dev",
+    "prod": "vue-cli-service build --dest dist/server && cross-env SSR=1 vue-cli-service build --dest dist/client && npm run start",
     "lint": "cross-env ./node_modules/.bin/eslint --color --fix ./ && vue-cli-service lint --fix",
     "clear_uni:dist": "rm -rf ./dist",
     "clear_win:dist": "rmdir /s /q dist"

@@ -25,8 +25,12 @@ module.exports = {
         .add('./src/entry-client.js');
 
       if (process.env.HMR) {
-        webpackConfig.entry('app').clear().add('webpack-hot-middleware/client').add('./src/entry-client.js');
-        webpackConfig.plugin('manifest').use(new webpack.HotModuleReplacementPlugin());
+        webpackConfig.entry('app')
+          .clear()
+          .add('webpack-hot-middleware/client')
+          .add('./src/entry-client.js');
+        webpackConfig.plugin('hotModuleReplacement')
+          .use(new webpack.HotModuleReplacementPlugin());
       }
       return;
     }
